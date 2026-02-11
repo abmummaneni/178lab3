@@ -12,14 +12,22 @@ const svg_scatter = d3
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-    .style("background", "#eee")
+    .style("background", "#ffffff")
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-const xAttr = "sepal.length";
-const yAttr = "petal.length";
+const defaultXAttr = "sepal.length";
+const defaultYAttr = "petal.length";
+const xAttr = defaultXAttr;
+const yAttr = defaultYAttr;
 const tickStep = 0.5;
 
+function axisLabel(attr) {
+    return attr
+        .split(".")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
 
 /* SVG_BAR WILL REPRESENT THE CANVAS THAT YOUR BARCHART WILL BE DRAWN ON */
 // Append the svg object to the body of the page. You don't need to change this.
@@ -32,119 +40,216 @@ const svg_bar = d3
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    d3.select("#scatterplot_dropdown").style("display", "none");
 // Read the iris dataset
 d3.csv("/iris.csv", d3.autoType).then(function (data) {
+
     /****************************************   
      TODO: Complete the scatter plot tasks
     *****************************************/
-   
-    let xDomain_scatter = d3.extent(data, (d) => d[xAttr]);
-    let yDomain_scatter = d3.extent(data, (d) => d[yAttr]);
-    const xScale_scatter = d3
-        .scaleLinear()
-        .domain([xDomain_scatter[0] * 0.95, xDomain_scatter[1] * 1.05])
-        .nice()
-        .range([0, width]);
-    const yScale_scatter = d3
-        .scaleLinear()
-        .domain([yDomain_scatter[0] * 0.95, yDomain_scatter[1] * 1.05])
-        .nice()
-        .range([height, 0]);
-    // Draw gridlines first so they stay behind points.
+    let attrs = Object.keys(data[0]).filter(
+        (a) => typeof data[0][a] === "number",
+    )
+    const varieties = Array.from(new Set(data.map((d) => d.variety)));
+    const colorScale = d3
+        .scaleOrdinal()
+        .domain(varieties)
+        .range(d3.schemePaired.slice(0, varieties.length));
+
+    let currentXAttr = attrs.includes(defaultXAttr) ? defaultXAttr : attrs[0];
+    let currentYAttr = attrs.includes(defaultYAttr) ? defaultYAttr : attrs[1];
+    const xDropdown = d3.select("#xAxisDropdown");
+    const yDropdown = d3.select("#yAxisDropdown");
+    xDropdown
+        .selectAll("option")
+        .data(attrs)
+        .join("option")
+        .attr("value", (d) => d)
+        .text((d) => d);
+    yDropdown
+        .selectAll("option")
+        .data(attrs)
+        .join("option")
+        .attr("value", (d) => d)
+        .text((d) => d);
+    xDropdown.property("value", currentXAttr);
+    yDropdown.property("value", currentYAttr);
+    // Draw layers once, then update.
     const gridLayer = svg_scatter.append("g").attr("class", "grid-layer");
-
-    gridLayer
-        .selectAll(".gridline-x")
-        .data(xScale_scatter.ticks())
-        .join("line")
-        .attr("class", "gridline")
-        .attr("stroke", "#cfcfcf")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "2 2")
-        .attr("x1", (d) => xScale_scatter(d))
-        .attr("x2", (d) => xScale_scatter(d))
-        .attr("y1", 0)
-        .attr("y2", height);
-
-    gridLayer
-        .selectAll(".gridline-y")
-        .data(yScale_scatter.ticks())
-        .join("line")
-        .attr("class", "gridline")
-        .attr("stroke", "#cfcfcf")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "2 2")
-        .attr("x1", 0)
-        .attr("x2", width)
-        .attr("y1", (d) => yScale_scatter(d))
-        .attr("y2", (d) => yScale_scatter(d));
-
-    svg_scatter
+    const xAxisGroup = svg_scatter
         .append("g")
         .attr("class", "xAxis")
         .style("font", "11px Monaco")
-        .attr("transform", `translate(0, ${height})`)
-        .call(
+        .attr("transform", `translate(0, ${height})`);
+    const yAxisGroup = svg_scatter
+        .append("g")
+        .attr("class", "yAxis")
+        .style("font", "11px Monaco");
+    const dotsLayer = svg_scatter.append("g").attr("class", "dots-layer");
+    const tooltipText = svg_scatter
+        .append("text")
+        .attr("x", 8)
+        .attr("y", 16)
+        .style("font", "12px Monaco")
+        .style("font-weight", "bold")
+        .style("display", "none");
+
+    const xAxisLabel = svg_scatter
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + 46);
+
+    const yAxisLabel = svg_scatter
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -42);
+
+    const chartTitle = svg_scatter
+        .append("text")
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .style("font-decoration", "underline")
+        .attr("x", width / 2)
+        .attr("y", -10);
+
+    // Scatter legend above the chart title area.
+    const scatterLegend = d3.select("#scatterplot_legend");
+    scatterLegend.selectAll("*").remove();
+    scatterLegend
+        .append("div")
+        .style("font", "13px Monaco")
+        .style("font-weight", "bold")
+        .style("margin-bottom", "6px")
+        .text("Variety of Iris Flowers");
+    const legendItems = scatterLegend
+        .append("div")
+        .style("display", "flex")
+        .style("gap", "14px")
+        .style("align-items", "center")
+        .style("flex-wrap", "wrap");
+    legendItems
+        .selectAll(".legend-item")
+        .data(varieties)
+        .join("div")
+        .attr("class", "legend-item")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "6px")
+        .html(
+            (d) =>
+                `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorScale(
+                    d,
+                )};"></span><span style="font:12px Monaco">${d}</span>`,
+        );
+    
+    function updateScatter() {
+        const t = svg_scatter.transition().duration(450).ease(d3.easeCubicOut);
+        let xDomain_scatter = d3.extent(data, (d) => d[currentXAttr]);
+        let yDomain_scatter = d3.extent(data, (d) => d[currentYAttr]);
+        const xScale_scatter = d3
+            .scaleLinear()
+            .domain([xDomain_scatter[0] * 0.95, xDomain_scatter[1] * 1.05])
+            .nice()
+            .range([0, width]);
+        const yScale_scatter = d3
+            .scaleLinear()
+            .domain([yDomain_scatter[0] * 0.95, yDomain_scatter[1] * 1.05])
+            .nice()
+            .range([height, 0]);
+
+
+        // Gridlines (kept behind dots).
+        gridLayer
+            .selectAll(".gridline-x")
+            .data(xScale_scatter.ticks())
+            .join("line")
+            .attr("class", "gridline-x")
+            .attr("stroke", "#cfcfcf")
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "2 2")
+            .transition(t)
+            .attr("x1", (d) => xScale_scatter(d))
+            .attr("x2", (d) => xScale_scatter(d))
+            .attr("y1", 0)
+            .attr("y2", height);
+
+        gridLayer
+            .selectAll(".gridline-y")
+            .data(yScale_scatter.ticks())
+            .join("line")
+            .attr("class", "gridline-y")
+            .attr("stroke", "#cfcfcf")
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "2 2")
+            .transition(t)
+            .attr("x1", 0)
+            .attr("x2", width)
+            .attr("y1", (d) => yScale_scatter(d))
+            .attr("y2", (d) => yScale_scatter(d));
+
+        xAxisGroup.transition(t).call(
             d3.axisBottom(xScale_scatter)
                 .tickValues(xScale_scatter.ticks())
                 .tickFormat(d3.format(".1f")),
         );
-
-    svg_scatter
-        .append("g")
-        .attr("class", "yAxis")
-        .style("font", "11px Monaco")
-        .call(
+        yAxisGroup.transition(t).call(
             d3.axisLeft(yScale_scatter)
                 .tickValues(yScale_scatter.ticks())
                 .tickFormat(d3.format(".1f")),
         );
 
-    const varieties = Array.from(new Set(data.map((d) => d.variety)));
-    const colorScale = d3
-        .scaleOrdinal()
-        .domain(varieties)
-        .range(["#1b9e77", "#377eb8", "#ff7f00"]);
+        dotsLayer
+            .selectAll(".dot")
+            .data(data)
+            .join("circle")
+            .attr("class", "dot")
+            .attr("r", 5)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1)
+            .attr("opacity", 0.95)
+            .style("fill", (d) => colorScale(d.variety))
+            .on("mouseover", function (event, d) {
+                d3.select(event.currentTarget).attr("r", 8).attr("stroke-width", 2);
+                tooltipText
+                    .style("display", null)
+                    .text(
+                        `${axisLabel(currentXAttr)}: ${d[currentXAttr].toFixed(
+                            1,
+                        )} | ${axisLabel(currentYAttr)}: ${d[currentYAttr].toFixed(
+                            1,
+                        )} | Variety: ${d.variety}`,
+                    );
+            })
+            .on("mouseout", function (event) {
+                d3.select(event.currentTarget).attr("r", 5).attr("stroke-width", 1);
+                tooltipText.style("display", "none").text("");
+            })
+            .transition(t)
+            .attr("cx", (d) => xScale_scatter(d[currentXAttr]))
+            .attr("cy", (d) => yScale_scatter(d[currentYAttr]));
 
-    svg_scatter
-        .append("g")
-        .selectAll(".dot")
-        .data(data)
-        .join("circle")
-        .attr("class", "dot")
-        .attr("cx", (d) => xScale_scatter(d[xAttr]))
-        .attr("cy", (d) => yScale_scatter(d[yAttr]))
-        .attr("r", 5)
-        .attr("opacity", 0.95)
-        .attr("stroke", "black")
-        .attr("stroke-width", 1)
-        .style("fill", (d) => colorScale(d.variety));
+        xAxisLabel.text(axisLabel(currentXAttr));
+        yAxisLabel.text(axisLabel(currentYAttr));
+        chartTitle.text(`${axisLabel(currentYAttr)} vs. ${axisLabel(currentXAttr)}`);
+    }
+    xDropdown.on("change", function () {
+        currentXAttr = this.value;
+        tooltipText.style("display", "none").text("");
+        updateScatter();
+    });
+    yDropdown.on("change", function () {
+        currentYAttr = this.value;
+        tooltipText.style("display", "none").text("");
+        updateScatter();
+    });
 
-    svg_scatter
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("x", width / 2)
-        .attr("y", height + 46)
-        .text("Sepal Length");
+    updateScatter();
+    
 
-    svg_scatter
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", -42)
-        .text("Petal Length");
-
-    svg_scatter
-        .append("text")
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .attr("x", width / 2)
-        .attr("y", -10)
-        .text("Petal Length vs. Sepal Length");
-
+    
     /********************************************************************** 
      TODO: Complete the bar chart tasks
 
