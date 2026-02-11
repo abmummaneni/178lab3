@@ -98,6 +98,8 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("rx", 4)
         .attr("ry", 4)
         .attr("fill", "#ffffff")
+        .attr("stroke", "#eeeeee")
+        .attr("stroke-width", 1)
         .attr("fill-opacity", 0.75);
     const xAxisLabel = svg_scatter
         .append("text")
@@ -298,12 +300,12 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     }
     xDropdown.on("change", function () {
         currentXAttr = this.value;
-        tooltipText.style("display", "none").text("");
+        tooltipGroup.style("display", "none");
         updateScatter();
     });
     yDropdown.on("change", function () {
         currentYAttr = this.value;
-        tooltipText.style("display", "none").text("");
+        tooltipGroup.style("display", "none");
         updateScatter();
     });
 
