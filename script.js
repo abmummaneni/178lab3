@@ -18,8 +18,6 @@ const svg_scatter = d3
 
 const defaultXAttr = "sepal.length";
 const defaultYAttr = "petal.length";
-const xAttr = defaultXAttr;
-const yAttr = defaultYAttr;
 const tickStep = 0.5;
 
 function axisLabel(attr) {
@@ -53,7 +51,7 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     const colorScale = d3
         .scaleOrdinal()
         .domain(varieties)
-        .range(d3.schemePaired.slice(0, varieties.length));
+        .range([ "#1f78b4","#a6cee3","#b2df8a"]);
 
     let currentXAttr = attrs.includes(defaultXAttr) ? defaultXAttr : attrs[0];
     let currentYAttr = attrs.includes(defaultYAttr) ? defaultYAttr : attrs[1];
@@ -142,19 +140,14 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("text-anchor", "middle")
         .style("font", "13px Monaco")
         .style("font-weight", "bold")
-        .text("Variety of Iris Flowers");
+        .text("Iris Varieties");
 
-    const itemSpacing = 100;
-    const itemsTotalWidth = (varieties.length - 1) * itemSpacing;
-    const startX = legendWidth / 2 - itemsTotalWidth / 2;
-
-    const legendItems = legendSvg
-        .append("g")
+    const legendRow = legendSvg.append("g").attr("transform", "translate(0, 36)");
+    const legendItems = legendRow 
         .selectAll(".legend-item")
         .data(varieties)
         .join("g")
         .attr("class", "legend-item")
-        .attr("transform", (d, i) => `translate(${startX + i * itemSpacing}, 36)`);
 
     legendItems
         .append("circle")
@@ -172,7 +165,23 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("y", 4)
         .style("font", "12px Monaco")
         .text((d) => d);
-    
+    const legendGap = 18;
+    const itemWidths = [];
+    let totalWidth = 0;
+    legendItems.each(function () {
+        const w = this.getBBox().width;
+        itemWidths.push(w);
+        totalWidth += w;
+    });
+    totalWidth += legendGap * Math.max(0, itemWidths.length - 1);
+
+    let cursorX = (legendWidth - totalWidth) / 2;
+    const itemPositions = itemWidths.map((w) => {
+        const x = cursorX;
+        cursorX += w + legendGap;
+        return x;
+    });
+    legendItems.attr("transform", (d, i) => `translate(${itemPositions[i]}, 0)`);
     function updateScatter() {
         const t = svg_scatter.transition().duration(450).ease(d3.easeCubicOut);
         let xDomain_scatter = d3.extent(data, (d) => d[currentXAttr]);
