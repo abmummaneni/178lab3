@@ -16,6 +16,11 @@ const svg_scatter = d3
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
+const xAttr = "sepal.length";
+const yAttr = "petal.length";
+const tickStep = 0.5;
+
+
 /* SVG_BAR WILL REPRESENT THE CANVAS THAT YOUR BARCHART WILL BE DRAWN ON */
 // Append the svg object to the body of the page. You don't need to change this.
 const svg_bar = d3
@@ -27,110 +32,118 @@ const svg_bar = d3
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    d3.select("#scatterplot_dropdown").style("display", "none");
 // Read the iris dataset
 d3.csv("/iris.csv", d3.autoType).then(function (data) {
     /****************************************   
      TODO: Complete the scatter plot tasks
     *****************************************/
-    //find all numeric columns in data
-    let attrs = Object.keys(data[0]).filter(
-        (a) => typeof data[0][a] === "number",
-    );
-
-    d3.select("#xAxisDropdown")
-        .selectAll("option")
-        .data(attrs)
-        .join("option")
-        .attr("value", (d) => d)
-        .text((d) => d);
-    //TODO: do the same for yAxisDropdown
-
-    // TODO: Create a scale for the x-axis that maps the x axis domain to the range of the canvas width
-    // TODO: Implement the x-scale domain and range for the x-axis
-    let xScale_scatter = d3
+   
+    let xDomain_scatter = d3.extent(data, (d) => d[xAttr]);
+    let yDomain_scatter = d3.extent(data, (d) => d[yAttr]);
+    const xScale_scatter = d3
         .scaleLinear()
-        //TODO: make this depend on the dropdown option
-        .domain(d3.extent(data, (d) => d["sepal.length"]))
+        .domain([xDomain_scatter[0] * 0.95, xDomain_scatter[1] * 1.05])
+        .nice()
         .range([0, width]);
-
-    // TODO: Create a scale for the y-axis that maps the y axis domain to the range of the canvas height
-    // Hint: You can create variables to represent the min and max of the y-axis values
-
-    let yScale_scatter = d3
+    const yScale_scatter = d3
         .scaleLinear()
-        // TODO: Fill these out
-        // .domain()
+        .domain([yDomain_scatter[0] * 0.95, yDomain_scatter[1] * 1.05])
+        .nice()
         .range([height, 0]);
+    // Draw gridlines first so they stay behind points.
+    const gridLayer = svg_scatter.append("g").attr("class", "grid-layer");
 
-    // TODO: Append the scaled x-axis tick marks to the svg
+    gridLayer
+        .selectAll(".gridline-x")
+        .data(xScale_scatter.ticks())
+        .join("line")
+        .attr("class", "gridline")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", (d) => xScale_scatter(d))
+        .attr("x2", (d) => xScale_scatter(d))
+        .attr("y1", 0)
+        .attr("y2", height);
+
+    gridLayer
+        .selectAll(".gridline-y")
+        .data(yScale_scatter.ticks())
+        .join("line")
+        .attr("class", "gridline")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", (d) => yScale_scatter(d))
+        .attr("y2", (d) => yScale_scatter(d));
+
     svg_scatter
         .append("g")
         .attr("class", "xAxis")
-        .style("font", "11px monaco")
+        .style("font", "11px Monaco")
         .attr("transform", `translate(0, ${height})`)
-        // TODO: Explain the following line of code in a comment
-        .call(d3.axisBottom(xScale_scatter));
+        .call(
+            d3.axisBottom(xScale_scatter)
+                .tickValues(xScale_scatter.ticks())
+                .tickFormat(d3.format(".1f")),
+        );
 
-    // TODO: Append the scaled y-axis tick marks to the svg
     svg_scatter
         .append("g")
         .attr("class", "yAxis")
-        .style("font", "11px monaco")
-        .call(d3.axisLeft(yScale_scatter));
+        .style("font", "11px Monaco")
+        .call(
+            d3.axisLeft(yScale_scatter)
+                .tickValues(yScale_scatter.ticks())
+                .tickFormat(d3.format(".1f")),
+        );
 
-    // TODO: Draw scatter plot dots here. Finish the rest of this
-    let dots = svg_scatter
+    const varieties = Array.from(new Set(data.map((d) => d.variety)));
+    const colorScale = d3
+        .scaleOrdinal()
+        .domain(varieties)
+        .range(["#1b9e77", "#377eb8", "#ff7f00"]);
+
+    svg_scatter
         .append("g")
         .selectAll(".dot")
-        //TODO: feed real data here
-        .data([
-            {"sepal.length": 6.0, x: 100, y: 100, color: "blue"},
-            {"sepal.length": 5.0, x: 100, y: 180, color: "orange"},
-        ])
+        .data(data)
         .join("circle")
         .attr("class", "dot")
-        // TODO: Fix these, find position of dots using appropriate scale
-        .attr("cx", (d) => xScale_scatter(d["sepal.length"]))
-        .attr("cy", (d) => d.y)
-        .attr("r", 10)
-        .attr("stroke", "white")
-        .attr("stroke-width", 2)
-        //TODO: color points by iris variety using a categorical color map
-        .style("fill", (d) => d.color);
+        .attr("cx", (d) => xScale_scatter(d[xAttr]))
+        .attr("cy", (d) => yScale_scatter(d[yAttr]))
+        .attr("r", 5)
+        .attr("opacity", 0.95)
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .style("fill", (d) => colorScale(d.variety));
 
-    //TODO: add tooltip here
-    dots.on("mouseover", (event, d) => {
-        console.log("Moused over a dot. \nEvent:", event, "D:", d);
-    });
-
-    // TODO: X axis label
     svg_scatter
         .append("text")
-        .attr("text-anchor", "end")
-        .attr("x", margin.left + width / 2)
-        .attr("y", height + 36)
-        // TODO: Finish this...
-        .text("TODO x label");
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + 46)
+        .text("Sepal Length");
 
-    // TODO: Y axis label
     svg_scatter
         .append("text")
-        .attr("text-anchor", "end")
+        .attr("text-anchor", "middle")
         .attr("transform", "rotate(-90)")
-        // .attr("y", ...)
-        // .attr("x", ...)
-        .text("TODO y label");
+        .attr("x", -height / 2)
+        .attr("y", -42)
+        .text("Petal Length");
 
-    // TODO: Chart title
     svg_scatter
         .append("text")
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
-        .style("text-decoration", "underline");
-    // TODO: Finish these...
-    // .attr("x", ...)
-    // .attr("y", ...)
-    // .text(...);
+        .style("font-weight", "bold")
+        .attr("x", width / 2)
+        .attr("y", -10)
+        .text("Petal Length vs. Sepal Length");
 
     /********************************************************************** 
      TODO: Complete the bar chart tasks

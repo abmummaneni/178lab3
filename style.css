@@ -1,6 +1,7 @@
 body {
     font-family: "Monaco";
     vertical-align: bottom;
+    margin-top: 5%;
 }
 
 h1 {
@@ -21,6 +22,4 @@ div {
     margin-left: 5%;
 }
 
-body 
-    margin-top: 5%;
-}
+
