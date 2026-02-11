@@ -89,6 +89,8 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("class", "xAxis")
         .style("font", "11px Monaco")
         .attr("transform", `translate(0, ${height})`)
+        // The call function calls the passed in function and gives itself
+        // as argument so a.call(b) is equivalent to b(a).
         .call(
             d3.axisBottom(xScale_scatter)
                 .tickValues(xScale_scatter.ticks())
@@ -109,7 +111,7 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     const colorScale = d3
         .scaleOrdinal()
         .domain(varieties)
-        .range(["#1b9e77", "#377eb8", "#ff7f00"]);
+        .range(["#1f78b4","#a6cee3","#b2df8a"]);
 
     svg_scatter
         .append("g")
@@ -147,7 +149,8 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .style("font-weight", "bold")
         .attr("x", width / 2)
         .attr("y", -10)
-        .text("Petal Length vs. Sepal Length");
+        .text("Petal Length vs. Sepal Length")
+        .style("text-decoration", "underline");
 
     /********************************************************************** 
      TODO: Complete the bar chart tasks
@@ -171,29 +174,56 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .range([0, width])
         .padding(0.4);
 
-    // TODO: Finish this
+    let yScale_bar = d3
+        .scaleLinear()
+        .domain([0, max_average * 1.1])
+        .range([height, 0])
+        .nice();
+        // Draw gridlines first so they stay behind axes and bars
+    const gridLayerbar = svg_bar.append("g").attr("class", "grid-layerbar");
+    gridLayerbar
+        .selectAll(".gridlinebar-y")
+        .data(yScale_bar.ticks())
+        .join("line")
+        .attr("class", "gridlinebar")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", (d) => yScale_bar(d))
+        .attr("y2", (d) => yScale_bar(d));
+
+    gridLayerbar
+        .selectAll(".gridlinebar-x")
+        .data(xScale_bar.domain())
+        .join("line")
+        .attr("class", "gridlinebar")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+        .attr("x2", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+        .attr("y1", 0)
+        .attr("y2", height);
     svg_bar
         .append("g")
         .attr("class", "xAxis")
         .style("font", "11px Monaco")
         .attr("transform", "translate(0," + height + ")")
         .call(d3.axisBottom(xScale_bar));
-
-    // TODO: Create a scale for the y-axis that maps the y axis domain to the range of the canvas height
-    let yScale_bar = d3
-        .scaleLinear()
-        .domain([0, max_average * 1.1])
-        .range([height, 0])
-        .nice();
-
-    // TODO: Finish this
     svg_bar
         .append("g")
         .attr("class", "yAxis")
         .style("font", "11px Monaco")
         .call(d3.axisLeft(yScale_bar))
-    
-     svg_bar
+    svg_bar
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + 46)
+        .text("Attribute");
+    svg_bar
         .append("text")
         .attr("text-anchor", "middle")
         .attr("transform", "rotate(-90)")
@@ -208,13 +238,17 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .style("font-weight", "bold")
         .attr("x", width / 2)
         .attr("y", -10)
-        .text("Average Values Per Attribute");
+        .text("Average Values Per Attribute")
+        .style("text-decoration", "underline");
 
     // TODO: You can create a variable that will serve as a map function for your sequential color map
     // Hint: Look at d3.scaleLinear()
     // let bar_color = d3.scaleLinear()...
     // Hint: What would the domain and range be?
-    let bar_color = d3.scaleLinear();
+    let bar_color = d3.scaleLinear()
+    .domain([0, d3.max(average_data[0], d => Object.values(d)[0])])   // min → max data value
+    .range(["#fff7ec", "#d7301f"]);          // light → dark color
+
     // .domain()
     // .range()
 
@@ -225,32 +259,13 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     svg_bar
         .selectAll(".bar")
         // TODO: Fix these
-        .data([
-            {x: 100, y: 100},
-            {x: 150, y: 200},
-            {x: 200, y: 180},
-        ])
+        .data(average_data[0])
         .join("rect")
-        .attr("x", (d) => d.x)
-        .attr("y", (d) => d.y)
-        .attr("width", 40)
-        .attr("height", 80)
-        .attr("fill", d3.schemeCategory10[0]);
+        .attr("x", (d) => xScale_bar(Object.keys(d)[0]))
+        .attr("y", (d) => yScale_bar(Object.values(d)[0]))
+        .attr("width", xScale_bar.bandwidth())
+        .attr("height", (d) => height - yScale_bar(Object.values(d)[0]))
+        .attr("fill", (d) => bar_color(Object.values(d)[0]))
+        .attr("stroke", "black");
 
-    // TODO: Append x-axis label
-    svg_bar.append("text"); // TODO: Fix this
-    // TODO: Append y-axis label
-    // TODO: Append bar chart title
-    // TODO: Draw gridlines for both charts
-
-    // Fix these (and maybe you need more...)
-    // d3.selectAll("g.yAxis g.tick")
-    // .append("line")
-    // .attr("class", "gridline")
-    // .attr("x1", ...)
-    // .attr("y1", ...)
-    // .attr("x2", ...)
-    // .attr("y2", ...)
-    // .attr("stroke", ...)
-    // .attr("stroke-dasharray","2")
 });
