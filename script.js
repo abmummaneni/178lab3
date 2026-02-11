@@ -116,34 +116,51 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("y", -10);
 
     // Scatter legend above the chart title area.
+    // centered horizontally, with some spacing from the title.
+    // Scatter legend above the chart title area.
     const scatterLegend = d3.select("#scatterplot_legend");
     scatterLegend.selectAll("*").remove();
-    scatterLegend
-        .append("div")
+    const legendWidth = width + margin.left + margin.right;
+    const legendHeight = 56;
+    const legendSvg = scatterLegend
+        .append("svg")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight);
+
+    legendSvg
+        .append("text")
+        .attr("x", legendWidth / 2)
+        .attr("y", 14)
+        .attr("text-anchor", "middle")
         .style("font", "13px Monaco")
         .style("font-weight", "bold")
-        .style("margin-bottom", "6px")
         .text("Variety of Iris Flowers");
-    const legendItems = scatterLegend
-        .append("div")
-        .style("display", "flex")
-        .style("gap", "14px")
-        .style("align-items", "center")
-        .style("flex-wrap", "wrap");
-    legendItems
+
+    const itemSpacing = 100;
+    const itemsTotalWidth = (varieties.length - 1) * itemSpacing;
+    const startX = legendWidth / 2 - itemsTotalWidth / 2;
+
+    const legendItems = legendSvg
+        .append("g")
         .selectAll(".legend-item")
         .data(varieties)
-        .join("div")
+        .join("g")
         .attr("class", "legend-item")
-        .style("display", "flex")
-        .style("align-items", "center")
-        .style("gap", "6px")
-        .html(
-            (d) =>
-                `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorScale(
-                    d,
-                )};"></span><span style="font:12px Monaco">${d}</span>`,
-        );
+        .attr("transform", (d, i) => `translate(${startX + i * itemSpacing}, 36)`);
+
+    legendItems
+        .append("circle")
+        .attr("r", 5)
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("fill", (d) => colorScale(d));
+
+    legendItems
+        .append("text")
+        .attr("x", 10)
+        .attr("y", 4)
+        .style("font", "12px Monaco")
+        .text((d) => d);
     
     function updateScatter() {
         const t = svg_scatter.transition().duration(450).ease(d3.easeCubicOut);
