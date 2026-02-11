@@ -34,7 +34,7 @@ const svg_bar = d3
     .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-    .style("background", "#eee")
+    .style("background", "#ffffff")
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
