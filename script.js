@@ -85,14 +85,22 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("class", "yAxis")
         .style("font", "11px Monaco");
     const dotsLayer = svg_scatter.append("g").attr("class", "dots-layer");
-    const tooltipText = svg_scatter
+    const tooltipGroup = svg_scatter
+        .append("g")
+        .style("display", "none")
+        .style("pointer-events", "none");
+    const tooltipText = tooltipGroup
         .append("text")
-        .attr("x", 8)
-        .attr("y", 16)
+        .attr("x", 0)
+        .attr("y", -30)
+        .attr("text-anchor", "middle")
         .style("font", "12px Monaco")
-        .style("font-weight", "bold")
-        .style("display", "none");
-
+     const tooltipBg = tooltipGroup
+        .insert("rect", "text")
+        .attr("rx", 4)
+        .attr("ry", 4)
+        .attr("fill", "#ffffff")
+        .attr("fill-opacity", 0.75);
     const xAxisLabel = svg_scatter
         .append("text")
         .attr("text-anchor", "middle")
@@ -153,6 +161,9 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         .attr("r", 5)
         .attr("cx", 0)
         .attr("cy", 0)
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.95)
         .attr("fill", (d) => colorScale(d));
 
     legendItems
@@ -168,14 +179,14 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
         let yDomain_scatter = d3.extent(data, (d) => d[currentYAttr]);
         const xScale_scatter = d3
             .scaleLinear()
-            .domain([xDomain_scatter[0] * 0.95, xDomain_scatter[1] * 1.05])
+            .domain([xDomain_scatter[0] * 0.93, xDomain_scatter[1] * 1.05])
             .nice()
             .range([0, width]);
         const yScale_scatter = d3
             .scaleLinear()
-            .domain([yDomain_scatter[0] * 0.95, yDomain_scatter[1] * 1.05])
-            .nice()
-            .range([height, 0]);
+            .domain([yDomain_scatter[0] * 0.93, yDomain_scatter[1] * 1.05])
+            .range([height, 0])
+            .nice();
 
 
         // Gridlines (kept behind dots).
@@ -229,20 +240,44 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
             .attr("opacity", 0.95)
             .style("fill", (d) => colorScale(d.variety))
             .on("mouseover", function (event, d) {
-                d3.select(event.currentTarget).attr("r", 8).attr("stroke-width", 2);
+                d3.select(event.currentTarget)
+                .raise()
+                .transition().duration(50).ease(d3.easeCubicOut)
+                .attr("r", 8)
+                .attr("stroke-width", 2);
+                const lines = [
+                    `${axisLabel(currentXAttr)}: ${d[currentXAttr].toFixed(1)}`,
+                    `${axisLabel(currentYAttr)}: ${d[currentYAttr].toFixed(1)}`,
+                    `Variety: ${d.variety}`,
+                ];
                 tooltipText
-                    .style("display", null)
-                    .text(
-                        `${axisLabel(currentXAttr)}: ${d[currentXAttr].toFixed(
-                            1,
-                        )} | ${axisLabel(currentYAttr)}: ${d[currentYAttr].toFixed(
-                            1,
-                        )} | Variety: ${d.variety}`,
-                    );
+                    .selectAll("tspan")
+                    .data(lines)
+                    .join("tspan")
+                    .attr("x", 0)
+                    .attr("dy", (line, i) => (i === 0 ? 0 : 14))
+                    .text((line) => line);
+                const bbox = tooltipText.node().getBBox();
+                const padX = 6;
+                const padY = 4;
+                tooltipBg
+                    .attr("x", bbox.x - padX)
+                    .attr("y", bbox.y - padY)
+                    .attr("width", bbox.width + padX * 2)
+                    .attr("height", bbox.height + padY * 2);
+                const [mx, my] = d3.pointer(event, svg_scatter.node());
+                tooltipGroup.attr("transform", `translate(${mx}, ${my - 10})`).style("display", null);
+            })
+            .on("mousemove", function (event) {
+                const [mx, my] = d3.pointer(event, svg_scatter.node());
+                tooltipGroup.attr("transform", `translate(${mx}, ${my - 10})`);
             })
             .on("mouseout", function (event) {
-                d3.select(event.currentTarget).attr("r", 5).attr("stroke-width", 1);
-                tooltipText.style("display", "none").text("");
+                d3.select(event.currentTarget)
+                .transition().duration(100).ease(d3.easeCubicOut)
+                .attr("r", 5)
+                .attr("stroke-width", 1);
+                tooltipGroup.style("display", "none");
             })
             .transition(t)
             .attr("cx", (d) => xScale_scatter(d[currentXAttr]))
