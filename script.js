@@ -320,60 +320,95 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
      attribute. However, feel free to implement this any way you'd like.
     ***********************************************************************/
 
-    // Create an array that will hold all computed average values
-    let average_data = [];
-    // Compute all average values for each attribute, except 'variety'
-    average_data.push({
-        "sepal.length": d3.mean(data, (d) => d["sepal.length"]),
-    });
-    // TODO (optional): Add the remaining values to your array
-    average_data.push(0);
-    average_data.push(0);
-    average_data.push(0);
-
-    // Compute the maximum and minimum values from the average values to use for later
-    let max_average = Object.values(average_data[0])[0];
-    let min_average = Object.values(average_data[0])[0];
-    average_data.forEach((element) => {
-        max_average = Math.max(max_average, Object.values(element)[0]);
-        min_average = Math.min(min_average, Object.values(element)[0]);
-    });
-
+    let average_data = [attrs.map((a) => ({[a]: d3.mean(data, (d) => d[a])}))];
+    let max_average = d3.max(average_data[0], (d) => Object.values(d)[0]);
+    let min_average = d3.min(average_data[0], (d) => Object.values(d)[0]);
     // TODO: Create a scale for the x-axis that maps the x axis domain to the range of the canvas width
     // Hint: the domain for X should be the attributes of the dataset
     // xDomain = ['sepal.length', ...]
     // then you can use 'xDomain' as input to .domain()
-    let xDomain = [];
+    let xDomain = attrs;
     let xScale_bar = d3
         .scaleBand()
-        // .domain(...)
+        .domain(xDomain)
         .range([0, width])
         .padding(0.4);
 
-    // TODO: Finish this
+    let yScale_bar = d3
+        .scaleLinear()
+        .domain([0, max_average * 1.1])
+        .range([height, 0])
+        .nice();
+        // Draw gridlines first so they stay behind axes and bars
+    const gridLayerbar = svg_bar.append("g").attr("class", "grid-layerbar");
+    gridLayerbar
+        .selectAll(".gridlinebar-y")
+        .data(yScale_bar.ticks())
+        .join("line")
+        .attr("class", "gridlinebar")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", (d) => yScale_bar(d))
+        .attr("y2", (d) => yScale_bar(d));
+
+    gridLayerbar
+        .selectAll(".gridlinebar-x")
+        .data(xScale_bar.domain())
+        .join("line")
+        .attr("class", "gridlinebar")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .attr("x1", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+        .attr("x2", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+        .attr("y1", 0)
+        .attr("y2", height);
     svg_bar
         .append("g")
         .attr("class", "xAxis")
+        .style("font", "11px Monaco")
         .attr("transform", "translate(0," + height + ")")
         .call(d3.axisBottom(xScale_bar));
-    // ....
+    svg_bar
+        .append("g")
+        .attr("class", "yAxis")
+        .style("font", "11px Monaco")
+        .call(d3.axisLeft(yScale_bar))
+    svg_bar
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + 46)
+        .text("Attribute");
+    svg_bar
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -42)
+        .text("Average");
 
-    // TODO: Create a scale for the y-axis that maps the y axis domain to the range of the canvas height
-    let yScale_bar = d3
-        .scaleLinear()
-        // TODO: Fix this!
-        // .domain(...)
-        .range([height, 0]);
-
-    // TODO: Finish this
-    svg_bar.append("g").attr("class", "yAxis").call(d3.axisLeft(yScale_bar));
-    // ....
+    svg_bar
+        .append("text")
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .attr("x", width / 2)
+        .attr("y", -10)
+        .text("Average Values Per Attribute")
+        .style("text-decoration", "underline");
 
     // TODO: You can create a variable that will serve as a map function for your sequential color map
     // Hint: Look at d3.scaleLinear()
     // let bar_color = d3.scaleLinear()...
     // Hint: What would the domain and range be?
-    let bar_color = d3.scaleLinear();
+    let bar_color = d3.scaleLinear()
+    .domain([0, d3.max(average_data[0], d => Object.values(d)[0])])   // min → max data value
+    .range(["#fff7ec", "#d7301f"]);          // light → dark color
+
     // .domain()
     // .range()
 
@@ -384,32 +419,12 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     svg_bar
         .selectAll(".bar")
         // TODO: Fix these
-        .data([
-            {x: 100, y: 100},
-            {x: 150, y: 200},
-            {x: 200, y: 180},
-        ])
+        .data(average_data[0])
         .join("rect")
-        .attr("x", (d) => d.x)
-        .attr("y", (d) => d.y)
-        .attr("width", 40)
-        .attr("height", 80)
-        .attr("fill", d3.schemeCategory10[0]);
-
-    // TODO: Append x-axis label
-    svg_bar.append("text"); // TODO: Fix this
-    // TODO: Append y-axis label
-    // TODO: Append bar chart title
-    // TODO: Draw gridlines for both charts
-
-    // Fix these (and maybe you need more...)
-    // d3.selectAll("g.yAxis g.tick")
-    // .append("line")
-    // .attr("class", "gridline")
-    // .attr("x1", ...)
-    // .attr("y1", ...)
-    // .attr("x2", ...)
-    // .attr("y2", ...)
-    // .attr("stroke", ...)
-    // .attr("stroke-dasharray","2")
+        .attr("x", (d) => xScale_bar(Object.keys(d)[0]))
+        .attr("y", (d) => yScale_bar(Object.values(d)[0]))
+        .attr("width", xScale_bar.bandwidth())
+        .attr("height", (d) => height - yScale_bar(Object.values(d)[0]))
+        .attr("fill", (d) => bar_color(Object.values(d)[0]))
+        .attr("stroke", "black");
 });
