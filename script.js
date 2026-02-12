@@ -379,66 +379,55 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
       .attr("y1", 0)
       .attr("y2", height);
 
-    d3.select("#barchart_legend").selectAll("*").remove();
+    const barLegendContainer = d3.select("#barchart_legend");
+    barLegendContainer.selectAll("*").remove(); // clear legend div
 
-    const barLegendW = 360;
-    const barLegendH = 55;
-    const barLegendBarW = 260;
-    const barLegendBarH = 18;
-    const barLegendX = 60;
-    const barLegendY = 25;
+    const barLegendW = 500;
+    const barLegendH = 60;
 
-    const barLegendSvg = d3.select("#barchart_legend")
-    .append("svg")
-    .attr("width", barLegendW)
-    .attr("height", barLegendH);
+    const barLegendX = 70;    // blocks start x
+    const barLegendY = 26;    // blocks start y
+    const blockW = 80;
+    const blockH = 18;
+    const nBlocks = 4;
+
+    const barLegendSvg = barLegendContainer
+      .append("svg")
+      .attr("width", barLegendW)
+      .attr("height", barLegendH);
 
     // title
     barLegendSvg.append("text")
-    .attr("x", barLegendX + barLegendBarW / 2)
-    .attr("y", 14)
-    .attr("text-anchor", "middle")
-    .style("font", "14px Monaco")
-    .text("Range of Values");
+      .attr("x", barLegendW / 2)
+      .attr("y", 16)
+      .attr("text-anchor", "middle")
+      .style("font", "14px Monaco")
+      .text("Range of Values");
 
-    // defs + gradient
-    const barLegendDefs = barLegendSvg.append("defs");
-    const barLegendGradId = "barLegendGrad";
-
-    const barLegendGrad = barLegendDefs.append("linearGradient")
-    .attr("id", barLegendGradId)
-    .attr("x1", "0%").attr("y1", "0%")
-    .attr("x2", "100%").attr("y2", "0%");
-
-    barLegendGrad.selectAll("stop")
-    .data([
-        { offset: "0%", color: "#fff7ec" },
-        { offset: "100%", color: "#d7301f" }
-    ])
-    .join("stop")
-    .attr("offset", d => d.offset)
-    .attr("stop-color", d => d.color);
-
-    // gradient bar
-    barLegendSvg.append("rect")
-    .attr("x", barLegendX)
-    .attr("y", barLegendY)
-    .attr("width", barLegendBarW)
-    .attr("height", barLegendBarH)
-    .attr("fill", `url(#${barLegendGradId})`);
-
-    // min/max numbers
+    // min/max labels (we update text in updateBar)
     const barLegendMinText = barLegendSvg.append("text")
-    .attr("x", barLegendX - 10)
-    .attr("y", barLegendY + barLegendBarH - 2)
-    .attr("text-anchor", "end")
-    .style("font", "14px Monaco");
+      .attr("x", barLegendX - 12)
+      .attr("y", barLegendY + blockH - 2)
+      .attr("text-anchor", "end")
+      .style("font", "14px Monaco");
 
     const barLegendMaxText = barLegendSvg.append("text")
-    .attr("x", barLegendX + barLegendBarW + 10)
-    .attr("y", barLegendY + barLegendBarH - 2)
-    .attr("text-anchor", "start")
-    .style("font", "14px Monaco");
+      .attr("x", barLegendX + blockW * nBlocks + 12)
+      .attr("y", barLegendY + blockH - 2)
+      .attr("text-anchor", "start")
+      .style("font", "14px Monaco");
+
+    // 4 blocks (we update fill in updateBar)
+    const barLegendRects = barLegendSvg.append("g")
+      .attr("transform", `translate(${barLegendX}, ${barLegendY})`)
+      .selectAll("rect")
+      .data(d3.range(nBlocks))
+      .join("rect")
+      .attr("x", i => i * blockW)
+      .attr("y", 0)
+      .attr("width", blockW)
+      .attr("height", blockH)
+      .attr("stroke", "none");
   
     // helper to build data (same structure you’re using)
     function buildStatData(stat) {
@@ -471,12 +460,15 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
     barLegendMaxText.text(max_val.toFixed(1));
         
     // update gradient stops to match current color scale
-    barLegendGrad.selectAll("stop")
-      .data([
-        { offset: "0%", color: bar_color(min_val) },
-        { offset: "100%", color: bar_color(max_val) }
-      ])
-      .attr("stop-color", d => d.color);
+    barLegendMinText.text(min_val.toFixed(1));
+    barLegendMaxText.text(max_val.toFixed(1));
+
+    // update 4 block colors
+    barLegendRects.attr("fill", (i) => {
+      const t = i / (nBlocks - 1);      // 0, 1/3, 2/3, 1
+      const v = min_val + t * (max_val - min_val);
+      return bar_color(v);
+    });
         
       const t = svg_bar.transition().duration(450).ease(d3.easeCubicOut);
 
