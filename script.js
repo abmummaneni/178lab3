@@ -319,112 +319,158 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
      Note: We provide starter code to compute the average values for each 
      attribute. However, feel free to implement this any way you'd like.
     ***********************************************************************/
-
-    let average_data = [attrs.map((a) => ({[a]: d3.mean(data, (d) => d[a])}))];
-    let max_average = d3.max(average_data[0], (d) => Object.values(d)[0]);
-    let min_average = d3.min(average_data[0], (d) => Object.values(d)[0]);
     // TODO: Create a scale for the x-axis that maps the x axis domain to the range of the canvas width
     // Hint: the domain for X should be the attributes of the dataset
     // xDomain = ['sepal.length', ...]
     // then you can use 'xDomain' as input to .domain()
-    let xDomain = attrs;
-    let xScale_bar = d3
-        .scaleBand()
-        .domain(xDomain)
-        .range([0, width])
-        .padding(0.4);
 
-    let yScale_bar = d3
-        .scaleLinear()
-        .domain([0, max_average * 1.1])
+    const xScale_bar = d3.scaleBand()
+      .domain(attrs)
+      .range([0, width])
+      .padding(0.4);
+
+    // 2) layers / groups (create once)
+    const gridLayerbar = svg_bar.append("g").attr("class", "grid-layerbar");
+    const barsLayer = svg_bar.append("g").attr("class", "bars-layer");
+    const labelsLayer = svg_bar.append("g").attr("class", "labels-layer");
+
+    // 3) axes groups (create once)
+    const xAxisGroupBar = svg_bar.append("g")
+      .attr("class", "xAxis")
+      .style("font", "11px Monaco")
+      .attr("transform", `translate(0, ${height})`)
+      .call(d3.axisBottom(xScale_bar));
+
+    const yAxisGroupBar = svg_bar.append("g")
+      .attr("class", "yAxis")
+      .style("font", "11px Monaco");
+
+    // 4) axis labels + title (create once, but store references!)
+    svg_bar.append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", width / 2)
+      .attr("y", height + 46)
+      .text("Attribute");
+
+    const yLabelBar = svg_bar.append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", -42);
+
+    const titleBar = svg_bar.append("text")
+      .attr("text-anchor", "middle")
+      .style("font-size", "16px")
+      .style("font-weight", "bold")
+      .style("text-decoration", "underline")
+      .attr("x", width / 2)
+      .attr("y", -10);
+
+    // 5) vertical gridlines (constant)
+    gridLayerbar.selectAll(".gridlinebar-x")
+      .data(xScale_bar.domain())
+      .join("line")
+      .attr("class", "gridlinebar-x")
+      .attr("stroke", "#cfcfcf")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "2 2")
+      .attr("x1", d => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+      .attr("x2", d => xScale_bar(d) + xScale_bar.bandwidth() / 2)
+      .attr("y1", 0)
+      .attr("y2", height);
+
+    // helper to build data (same structure you’re using)
+    function buildStatData(stat) {
+      if (stat === "max") return attrs.map(a => ({ [a]: d3.max(data, d => d[a]) }));
+      if (stat === "min") return attrs.map(a => ({ [a]: d3.min(data, d => d[a]) }));
+      return attrs.map(a => ({ [a]: d3.mean(data, d => d[a]) })); // avg
+    }
+
+    // 6) update function
+    function updateBar(stat) {
+      const stat_data = buildStatData(stat);
+
+      const max_val = d3.max(stat_data, d => Object.values(d)[0]);
+      const min_val = d3.min(stat_data, d => Object.values(d)[0]);
+
+      // y scale depends on stat
+      const yScale_bar = d3.scaleLinear()
+        .domain([0, max_val * 1.1])
         .range([height, 0])
         .nice();
-        // Draw gridlines first so they stay behind axes and bars
-    const gridLayerbar = svg_bar.append("g").attr("class", "grid-layerbar");
-    gridLayerbar
-        .selectAll(".gridlinebar-y")
-        .data(yScale_bar.ticks())
-        .join("line")
-        .attr("class", "gridlinebar")
-        .attr("stroke", "#cfcfcf")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "2 2")
-        .attr("x1", 0)
-        .attr("x2", width)
-        .attr("y1", (d) => yScale_bar(d))
-        .attr("y2", (d) => yScale_bar(d));
-
-    gridLayerbar
-        .selectAll(".gridlinebar-x")
-        .data(xScale_bar.domain())
-        .join("line")
-        .attr("class", "gridlinebar")
-        .attr("stroke", "#cfcfcf")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "2 2")
-        .attr("x1", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
-        .attr("x2", (d) => xScale_bar(d) + xScale_bar.bandwidth() / 2)
-        .attr("y1", 0)
-        .attr("y2", height);
-    svg_bar
-        .append("g")
-        .attr("class", "xAxis")
-        .style("font", "11px Monaco")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(xScale_bar));
-    svg_bar
-        .append("g")
-        .attr("class", "yAxis")
-        .style("font", "11px Monaco")
-        .call(d3.axisLeft(yScale_bar))
-    svg_bar
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("x", width / 2)
-        .attr("y", height + 46)
-        .text("Attribute");
-    svg_bar
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", -42)
-        .text("Average");
-
-    svg_bar
-        .append("text")
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .attr("x", width / 2)
-        .attr("y", -10)
-        .text("Average Values Per Attribute")
-        .style("text-decoration", "underline");
 
     // TODO: You can create a variable that will serve as a map function for your sequential color map
     // Hint: Look at d3.scaleLinear()
     // let bar_color = d3.scaleLinear()...
     // Hint: What would the domain and range be?
-    let bar_color = d3.scaleLinear()
-    .domain([0, d3.max(average_data[0], d => Object.values(d)[0])])   // min → max data value
-    .range(["#fff7ec", "#d7301f"]);          // light → dark color
+      const bar_color = d3.scaleLinear()
+        .domain([min_val, max_val])
+        .range(["#fff7ec", "#d7301f"]);
 
-    // .domain()
-    // .range()
+      const t = svg_bar.transition().duration(450).ease(d3.easeCubicOut);
 
-    // TODO: Append bars to the bar chart with the appropriately scaled height
-    // Hint: the data being used for the bar chart is the computed average values! Not the entire dataset
-    // TODO: Color the bars using the sequential color map
-    // Hint: .attr("fill") should fill the bars using a function, and that function can be from the above bar_color function we created
-    svg_bar
-        .selectAll(".bar")
-        // TODO: Fix these
-        .data(average_data[0])
+      // update y axis
+      yAxisGroupBar.transition(t).call(d3.axisLeft(yScale_bar));
+
+      // update horizontal gridlines
+      gridLayerbar.selectAll(".gridlinebar-y")
+        .data(yScale_bar.ticks())
+        .join("line")
+        .attr("class", "gridlinebar-y")
+        .attr("stroke", "#cfcfcf")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "2 2")
+        .transition(t)
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", d => yScale_bar(d))
+        .attr("y2", d => yScale_bar(d));
+
+      // update title + y label
+      const label = stat === "max" ? "Max" : stat === "min" ? "Min" : "Average";
+      yLabelBar.text(label);
+      titleBar.text(`${label} Values Per Attribute`);
+
+      // update bars
+      barsLayer.selectAll("rect.bar")
+        .data(stat_data, d => Object.keys(d)[0])
         .join("rect")
-        .attr("x", (d) => xScale_bar(Object.keys(d)[0]))
-        .attr("y", (d) => yScale_bar(Object.values(d)[0]))
+        .attr("class", "bar")
+        .attr("stroke", "black")
+        .transition(t)
+        .attr("x", d => xScale_bar(Object.keys(d)[0]))
         .attr("width", xScale_bar.bandwidth())
-        .attr("height", (d) => height - yScale_bar(Object.values(d)[0]))
-        .attr("fill", (d) => bar_color(Object.values(d)[0]))
-        .attr("stroke", "black");
-});
+        .attr("y", d => yScale_bar(Object.values(d)[0]))
+        .attr("height", d => height - yScale_bar(Object.values(d)[0]))
+        .attr("fill", d => bar_color(Object.values(d)[0]));
+
+      // labels above bars
+      labelsLayer.selectAll("text.bar-value")
+        .data(stat_data, d => Object.keys(d)[0])
+        .join("text")
+        .attr("class", "bar-value")
+        .attr("text-anchor", "middle")
+        .style("font", "11px Monaco")
+        .transition(t)
+        .attr("x", d => xScale_bar(Object.keys(d)[0]) + xScale_bar.bandwidth() / 2)
+        .attr("y", d => yScale_bar(Object.values(d)[0]) - 6)
+        .tween("text", function(d) {
+          const target = Object.values(d)[0];
+          const start = +this.textContent || 0;
+          const i = d3.interpolateNumber(start, target);
+          return function(tt) {
+            this.textContent = i(tt).toFixed(1);
+          };
+        });
+    }
+
+    // 7) click handlers (IDs must exist in your HTML)
+    d3.selectAll("input[name='barChartButton']").on("change", function () {
+      const stat = this.value.toLowerCase(); // "AVG"/"MAX"/"MIN" -> "avg"/"max"/"min"
+      updateBar(stat);
+    });
+
+    // initial draw
+    updateBar(document.querySelector("input[name='barChartButton']:checked").value.toLowerCase());
+    });
+
