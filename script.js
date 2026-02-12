@@ -379,6 +379,67 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
       .attr("y1", 0)
       .attr("y2", height);
 
+    d3.select("#barchart_legend").selectAll("*").remove();
+
+    const barLegendW = 360;
+    const barLegendH = 55;
+    const barLegendBarW = 260;
+    const barLegendBarH = 18;
+    const barLegendX = 60;
+    const barLegendY = 25;
+
+    const barLegendSvg = d3.select("#barchart_legend")
+    .append("svg")
+    .attr("width", barLegendW)
+    .attr("height", barLegendH);
+
+    // title
+    barLegendSvg.append("text")
+    .attr("x", barLegendX + barLegendBarW / 2)
+    .attr("y", 14)
+    .attr("text-anchor", "middle")
+    .style("font", "14px Monaco")
+    .text("Range of Values");
+
+    // defs + gradient
+    const barLegendDefs = barLegendSvg.append("defs");
+    const barLegendGradId = "barLegendGrad";
+
+    const barLegendGrad = barLegendDefs.append("linearGradient")
+    .attr("id", barLegendGradId)
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "100%").attr("y2", "0%");
+
+    barLegendGrad.selectAll("stop")
+    .data([
+        { offset: "0%", color: "#fff7ec" },
+        { offset: "100%", color: "#d7301f" }
+    ])
+    .join("stop")
+    .attr("offset", d => d.offset)
+    .attr("stop-color", d => d.color);
+
+    // gradient bar
+    barLegendSvg.append("rect")
+    .attr("x", barLegendX)
+    .attr("y", barLegendY)
+    .attr("width", barLegendBarW)
+    .attr("height", barLegendBarH)
+    .attr("fill", `url(#${barLegendGradId})`);
+
+    // min/max numbers
+    const barLegendMinText = barLegendSvg.append("text")
+    .attr("x", barLegendX - 10)
+    .attr("y", barLegendY + barLegendBarH - 2)
+    .attr("text-anchor", "end")
+    .style("font", "14px Monaco");
+
+    const barLegendMaxText = barLegendSvg.append("text")
+    .attr("x", barLegendX + barLegendBarW + 10)
+    .attr("y", barLegendY + barLegendBarH - 2)
+    .attr("text-anchor", "start")
+    .style("font", "14px Monaco");
+  
     // helper to build data (same structure you’re using)
     function buildStatData(stat) {
       if (stat === "max") return attrs.map(a => ({ [a]: d3.max(data, d => d[a]) }));
@@ -406,7 +467,17 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
       const bar_color = d3.scaleLinear()
         .domain([min_val, max_val])
         .range(["#fff7ec", "#d7301f"]);
-
+    barLegendMinText.text(min_val.toFixed(1));
+    barLegendMaxText.text(max_val.toFixed(1));
+        
+    // update gradient stops to match current color scale
+    barLegendGrad.selectAll("stop")
+      .data([
+        { offset: "0%", color: bar_color(min_val) },
+        { offset: "100%", color: bar_color(max_val) }
+      ])
+      .attr("stop-color", d => d.color);
+        
       const t = svg_bar.transition().duration(450).ease(d3.easeCubicOut);
 
       // update y axis
