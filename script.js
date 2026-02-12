@@ -456,12 +456,27 @@ d3.csv("/iris.csv", d3.autoType).then(function (data) {
       const bar_color = d3.scaleLinear()
         .domain([min_val, max_val])
         .range(["#fff7ec", "#d7301f"]);
-    barLegendMinText.text(min_val.toFixed(1));
-    barLegendMaxText.text(max_val.toFixed(1));
+    
+    // Animate min and max text values
+    barLegendMinText
+      .transition()
+      .duration(450)
+      .ease(d3.easeCubicOut)
+      .textTween(function() {
+        const i = d3.interpolate(parseFloat(this.textContent) || min_val, min_val);
+        return t => i(t).toFixed(1);
+      });
+    
+    barLegendMaxText
+      .transition()
+      .duration(450)
+      .ease(d3.easeCubicOut)
+      .textTween(function() {
+        const i = d3.interpolate(parseFloat(this.textContent) || max_val, max_val);
+        return t => i(t).toFixed(1);
+      });
         
-    // update gradient stops to match current color scale
-    barLegendMinText.text(min_val.toFixed(1));
-    barLegendMaxText.text(max_val.toFixed(1));
+
 
     // update 4 block colors
     barLegendRects.attr("fill", (i) => {
